@@ -1,0 +1,7 @@
+To uncover patterns by time, I basically took a sum of arrests across all days of the week, months, and hours of the day
+instead of taking the average.
+
+With hours of the day seen in Cho_4_daytime.txt, we see starting from 11 am - 8 pm, arrests seem to increase a great deal.
+Wierdly enough, there seems to be no noticeable pattern with monthly arrests, although from the avg. monthly crime we saw
+crime increase in the summertime.
+Finally, arrests seem to increase linearly from Monday to Friday (peak), before decreasing into the weekend.

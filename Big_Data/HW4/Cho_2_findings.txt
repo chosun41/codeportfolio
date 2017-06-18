@@ -1,0 +1,13 @@
+Part 1 -
+Cho_2_1.txt shows the top 10 blocks with the highest # of crimes.
+
+Part 2 -
+The two beats that are adjacent and have the highest correlation are
+1614 and 1631 with a correlation of 0.9999117.
+
+Part 3 -
+After grouping by district and taking the average across the years
+respectively for Mayor Daly and Emanuel, we find that the difference
+in crime is statistically significant as the p-value is under the 0.05
+alpha. Therefore, we can safely say under Mayor Daly's administration,
+Chicago experienced more yearly crime at the district level.

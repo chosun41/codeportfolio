@@ -1,0 +1,4 @@
+I used a random forest model using weeks 16-19 to predict week 20 of 2015,
+broken down by the beat model. The output files show that the non severe
+model (low IUCR model) has a R squared value of 60% while the sever model
+(high IUCR model) has a R squared value of 49%. 

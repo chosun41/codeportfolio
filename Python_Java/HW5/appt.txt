@@ -1,0 +1,3 @@
+Appointment Frequency: One time, Description: surgery, Date: Wed Nov 01 00:00:00 CDT 2017
+Appointment Frequency: Daily, Description: insulin shots, From Date: Mon May 01 00:00:00 CDT 2017, To Date: Tue Aug 01 00:00:00 CDT 2017
+Appointment Frequency: Monthly, Description: mri, From Date: Wed Feb 01 00:00:00 CST 2017, To Date: Sat Jul 01 00:00:00 CDT 2017

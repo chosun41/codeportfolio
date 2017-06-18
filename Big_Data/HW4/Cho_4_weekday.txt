@@ -1,0 +1,7 @@
+Row(weekday=u'Friday', weekday_arrests=250676)
+Row(weekday=u'Wednesday', weekday_arrests=250748)
+Row(weekday=u'Monday', weekday_arrests=228115)
+Row(weekday=u'Saturday', weekday_arrests=234915)
+Row(weekday=u'Sunday', weekday_arrests=214919)
+Row(weekday=u'Thursday', weekday_arrests=246924)
+Row(weekday=u'Tuesday', weekday_arrests=247905)

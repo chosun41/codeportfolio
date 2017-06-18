@@ -1,0 +1,1 @@
+R square: 48.56 Test MSE: 11.2232
