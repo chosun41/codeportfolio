@@ -1,0 +1,263 @@
+---
+title: "HW1"
+author: "Michael Cho"
+date: "January 19, 2017"
+output: word_document
+---
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(warning=FALSE, message=FALSE)
+```
+
+All output and plots are in the appendix towards the end of this pdf. Problems are referenced by
+question number and part letter i.g. 2.a 2.b. 
+
+```{r}
+setwd("C:/Users/mcho/Desktop/pred_anal2/class1")
+```
+
+#Problem 1 -
+
+Please refer to proof attached in the appendix.
+
+#Problem 2 -
+
+##a. 
+$\gamma_{0}$ is 29.62201 and $\gamma_{1}$ is 13.44881
+
+##b.
+From the nlm function $\gamma_{0}$ is 28.13688 and $\gamma_{1}$ is 12.57428, and from the nls function $\gamma_{0}$ is 28.13705 and $\gamma_{1}$ is 12.57445.
+
+#Problem 3 -
+
+##a.
+Please refer to appendix to see how the information and covariance matrix is calculated. The standard error for $\gamma_{0}$ is 0.7418084 and the standard error for $\gamma_{1}$ is 0.7795476.
+
+##b.
+Please refer to appendix to see how the covariance matrix from nls is calculated.The standard error for $\gamma_{0}$ is 0.7279790 and the standard error for $\gamma_{1}$ is 0.7630534. As we can see the results from part b do not agree with part a.
+
+##c.
+From nlm, the 95% conf interval for $\gamma_{0}$ is [26.68296,29.59080] and for $\gamma_{1}$
+is [11.04640, 14.10217].
+From nlm, the 95% conf interval for $\gamma_{0}$ is [26.71024, 29.56386] and for $\gamma_{1}$
+is [11.07890, 14.07001]. 
+The nlm confidence intervals is wider than nls confidence intervals as a result of having higher standard errors.
+
+#Problem 4 -
+
+##a. 
+Please refer to appendix for bootstrap histograms. The bootstrap standard errors are 0.7179607 for $\gamma_{0}$ and 0.7420604 for $\gamma_{1}$.
+
+##b.
+The crude 95% confidence intervals is [26.83, 29.64] for $\gamma_{0}$ and [11.18, 14.09] for $\gamma_{1}$.
+
+##c.
+The reflected 95% confidence intervals is [27.01, 29.88] for $\gamma_{0}$ and [11.15, 14.11] for $\gamma_{1}$.
+
+##c.
+The confidence intervals from part c and b disagree. When comparing the confidence intervals to the histogram, it seems the reflected confidence intervals more accurately capture the skew aross the boostrap samples when comparing to the normal approximation which is not a perfect representation of the sample distributions themselves according to the normal plots.
+
+#Problem 5 -
+
+For X*=27, the 95% confidence interval for Y* is [18.79422, 19.59919] and the 95% prediction interval is [18.10358, 20.28983]. The prediction interval would be more appropriate here 
+because we are trying to get the future response and the prediction interval contains a component
+that allows for an error component not captured by the model. 
+
+#Problem 6 -
+
+We first get the initial guesses for paramater values from running a linear model for $Y_{i}$=$\beta_{0}$ + $\beta_{1}$*$\sqrt{X_{i}}$ + $\epsilon_{i}$ and then plug this into the nls function. We get an AIC of 1.851093 from Problem 2b and an AIC of 3.05837 for the new model.
+The original model seems to be better according to AIC.
+
+#Problem 7 - 
+
+The n fold cross validation only requires 1 replicate since one sample is predicted after
+fitting all other observations. The n fold cross validation shows that the problem 2b model
+has 0.29 MSE, 0.99 $r^2$ value and 1.11 MSE, 0.97 $r^2$ value for the square root model.
+
+#Problem 8 -
+
+Please check appendix for residual vs x plots. The original model seems more appropriate as the residuals seem more random around 0 than the square root model which seems to have a more distinct residual pattern. Randomness is required for residuals for the expected value to be 0.
+The residual plots concur with the conclusions from problem 6 and 7.
+
+#Appendix
+
+##2.a
+```{r}
+#install.packages("xlsx")
+library(xlsx)
+data<-read.xlsx("HW1_data.xls", sheetName = "Prob 2")
+fit<-lm(I(1/Y)~I(1/X), data=data)
+summary(fit)
+gamma0<-1/coef(fit)[1]
+gamma0
+gamma1<-coef(fit)[2]/coef(fit)[1]
+gamma1
+```
+
+##2.b
+```{r}
+#nlm
+fn <- function(p) {yhat<-p[1]*data$X/(p[2]+data$X); sum((data$Y-yhat)^2)} 
+out<-nlm(fn,p=c(gamma0,gamma1),hessian=TRUE)
+out$estimate
+```
+
+```{r}
+# nls
+fn2 <- function(x1,p) p[1]*x1/(p[2]+x1)
+out2<-nls(Y~fn2(X,p),data=data,start=list(p=c(gamma0,gamma1)),trace=TRUE)
+coef(summary(out2))[,1]
+```
+
+##3.a
+```{r}
+theta<-out$estimate  #parameter estimates
+MSE<-out$minimum/(length(data$Y) - length(theta))  #estimate of the error variance
+InfoMat<-out$hessian/2/MSE  
+CovTheta<-solve(InfoMat) 
+SE<-sqrt(diag(CovTheta))
+InfoMat # information matrix
+CovTheta # covariance matrix
+SE # standard errors
+```
+
+##3.b
+```{r}
+# nls covariance matrix
+vcov(out2)
+SEnls<-sqrt(diag(vcov(out2)))
+SEnls
+```
+
+##3.c
+```{r}
+# nlm 95% conf interval
+c(theta[1]-qnorm(0.975)*SE[1],theta[1]+qnorm(0.975)*SE[1])
+c(theta[2]-qnorm(0.975)*SE[2], theta[2]+qnorm(0.975)*SE[2])
+# nls 95% conf interval
+confint.default(out2)
+```
+
+##4.a
+```{r}
+library(boot)
+datafit<-function(Z, i, theta0){
+  Zboot<-Z[i,]
+  # in order it appears in the file for Zboot
+  y<-Zboot[[1]]; x1<-Zboot[[2]]
+  fn3 <- function(p) {yhat<-p[1]*x1/(p[2]+x1); sum((y-yhat)^2)} 
+  out<-nlm(fn3,p=theta0)
+  theta<-out$estimate
+}
+databoot<-boot(data, datafit, R=20000, theta0=c(gamma0, gamma1))
+CovTheta<-cov(databoot$t)
+SE<-sqrt(diag(CovTheta))
+databoot
+SE
+
+# bootstrap histogram for gamma0
+plot(databoot,index=1)
+# boostrap histogram for gamma1
+plot(databoot,index=2)
+```
+
+##4.b
+```{r}
+boot.ci(databoot,conf=.95,index=1,type="norm") 
+boot.ci(databoot,conf=.95,index=2,type="norm") 
+```
+
+##4.c
+```{r}
+boot.ci(databoot,conf=.95,index=1,type="basic")
+boot.ci(databoot,conf=.95,index=2,type="basic")
+```
+
+##5
+```{r}
+datafit2<-function(Z, i, theta0, x_pred){
+  Zboot<-Z[i,]
+  # in order it appears in the file for Zboot
+  y<-Zboot[[1]]; x1<-Zboot[[2]]
+  fn3 <- function(p) {yhat<-p[1]*x1/(p[2]+x1); sum((y-yhat)^2)} 
+  out<-nlm(fn3,p=theta0)
+  theta<-out$estimate
+  y_pred<- theta[1]*x_pred/(theta[2]+x_pred)} #predicted response
+databoot2<-boot(data, datafit2, R=20000, theta0=c(gamma0, gamma1), x_pred=27)
+
+MSE<-out$minimum/(length(data$Y) - length(theta)) 
+VarYhat<-var(databoot2$t); VarYhat
+SEg<-sqrt(VarYhat); SEg
+SEy<-sqrt(VarYhat + MSE); SEy
+
+# conf int
+c(databoot2$t0-qnorm(.975)*SEg, databoot2$t0+qnorm(.975)*SEg)
+
+# pred int
+c(databoot2$t0-qnorm(.975)*SEy, databoot2$t0+qnorm(.975)*SEy)
+```
+
+##6
+```{r}
+# AIC for problem 2b
+AIC2b<- -2*as.numeric(logLik(out2))/18+2*2/18
+AIC2b
+
+# get initial guesses from linear model of new model
+fit6<-lm(I(Y)~I(sqrt(X)), data=data)
+summary(fit6)
+coef(fit6)
+
+fn4 <- function(x1,p) p[1]+p[2]*sqrt(x1)
+out4<-nls(Y~fn4(X,p),data=data, start=list(p=c(coef(fit6)[1],coef(fit6)[2])),trace=TRUE)
+AIC6<- -2*as.numeric(logLik(out4))/18+2*2/18
+AIC6
+```
+
+##7
+```{r}
+CVInd <- function(n,K) {  #n is sample size; K is number of parts; returns K-length list of indices for each part
+  m<-floor(n/K)  #approximate size of each part floor(18/18)=1
+  r<-n-m*K  # 18-1*18=0
+  I<-sample(n,n)  #random reordering of the indices 
+  Ind<-list()  #will be list of indices for all K parts
+  length(Ind)<-K # 18 lists
+  for (k in 1:K) {
+    if (k <= r) kpart <- ((m+1)*(k-1)+1):((m+1)*k)  # not applicable here since r is 0
+    else kpart<-((m+1)*r+m*(k-r-1)+1):((m+1)*r+m*(k-r)) 
+    Ind[[k]] <- I[kpart]  #indices for kth part of data
+  }
+  Ind
+}
+
+Nrep<-20 #number of replicates of CV
+n.models = 2 #number of different models to fit and compare
+fn2 <- function(x1,p) p[1]*x1/(p[2]+x1)
+fn4 <- function(x1,p) p[1]+p[2]*sqrt(x1)
+n<-nrow(data)
+K<-n #K-fold CV on each replicate, using n fold here
+yhat=matrix(0,n,n.models)
+MSE<-matrix(0,Nrep,n.models)
+
+for (j in 1:Nrep) {
+  Ind<-CVInd(n,K)
+  for (k in 1:K) {
+    out<-nls(Y~fn2(X,p),data=data[-Ind[[k]],],start=list(p=c(gamma0,gamma1)))
+    yhat[Ind[[k]],1]<-as.numeric(predict(out,data[Ind[[k]],]))
+    out<-nls(Y~fn4(X,p),data=data[-Ind[[k]],],start=list(p=c(coef(fit6)[1],coef(fit6)[2])))
+    yhat[Ind[[k]],2]<-as.numeric(predict(out,data[Ind[[k]],]))
+  } #end of k loop
+  MSE[j,]=apply(yhat,2,function(indvyhat) sum((data$Y-indvyhat)^2))/n
+} #end of j loop
+
+MSEAve<- apply(MSE,2,mean); MSEAve #averaged mean square CV error
+MSEsd <- apply(MSE,2,sd); MSEsd   #SD of mean square CV error
+r2<-1-MSEAve/var(data$Y); r2  #CV r^2
+```
+
+##7
+```{r}
+# original model
+plot(data$X, data$Y-predict(out2,data$X))
+# square root model
+plot(data$X, data$Y-predict(out4,data$X))
+```

@@ -1,0 +1,397 @@
+---
+title: "HW2"
+author: "Michael Cho"
+date: "February 4, 2017"
+output: word_document
+---
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(warning=FALSE, message=FALSE)
+```
+
+```{r}
+setwd("C:/Users/mcho/Desktop/pred_anal2/class2")
+```
+
+Please note that I made unstandardized and standardized versions of the datasets. The standardized datsets are for neural networks and the unstandardized are used for other models. The MSE of different models should therefore be directly comparable as well as the response variable is the same for all models problems 1-3, and the same for all models for problem 4.
+
+##Problem 1
+
+#a.
+The $R^2$ is 56% and when fit to the data, the total SSE is 237.0783, which when compared to the other models in problem 2 and 3 is the highest and thus has the least predictive power.
+
+#b.
+The correlation matrix and scatterplot diagrams show that the total number of interventions/procedures (intvn) has the highest effect on cost (r=0.70), followed by number of days of treatment condition (comorb,
+r=0.35) and number of emergency room visits (comp, r=0.31). Only the variables intvn, ervis, comp, and
+comorb are significant in the regression output.
+
+#c.
+The variables drugs, number of comorbidites, and number of days of treatment are heavily right skewed, 
+suggesting we need a log transform. Here we have been instructed to not transform these predictors. While
+the normality plot seems to fit roughly well, except for outliers, the residual vs. fitted plot shows
+that there continues to be nonlinearity in the model as the residuals are not arranged as randomly around
+0, which is the expected value of the residuals under the linear model. 
+
+##Problem 2
+
+#a.
+Please refer to appendix for k-fold. Combinations of size 25,30,35 were mixed with decay of 0.5,1,2
+to find the optimal mix. It seems the best combination is size 25 and decay of 1.
+
+#b.
+The cross validation shows that $R^2$ of the optimal mix is 68%. and the SSE is 164.8067, which is a lot
+lower than the linear model.
+
+#c.
+Please refer to appendix for ALEplots of the main and second order effects. The main effect of the predictors are as follows, calculated from taking the difference between the high and low value of 
+these variables on cost. It seems that just like the linear output, the number of interventions has the highest effect on cost.The rest of the variables have a moderate effect on cost (0.4-0.6), except for age and gender which has the lowest abs value. Most second order interactions don't have much effect on cost, 
+except for intvn and comp, intvn and comorb, and comp and comorb. A matrix of these second order interacitons are in the appendix as well.
+
+age= -0.15, gender= - -0.04, intvn= 2, drugs= - 0.4, ervis = 0.6, comp = 0.4, comorb = 0.6
+
+#d.
+The residual plot shows pretty random errors. The neural network seems to capture most of the nonlinearities.
+
+##Problem 3
+
+#a. 
+Please refer to appendix for k-fold. A regression tree of size 18 seems to be the most optimal with
+complexity paramter of 0.0026339.
+
+#b.
+The cross validation shows that $R^2$ of the optimal tree size is approximately 71.8%. and the SSE is 152.1165.
+
+#c.
+Please refer to the appendix for the text and graphic output of the regression tree, as well as the variable importance output.
+
+Any tree starts by taking variables which would produce the most significant split in the data.
+In the case of a regression tree, the criteria for a split is finding the variable value/facor which decreases SSE. Intvn has the largest impact reducing SSE by 323.41 followed by comorb 50.41. The variable
+importance is the total SSE reduced wherever the variable was used in a binary split.
+
+#d.
+The residual plot is a bit wierd as the regression tree fits by taking a mean at its terminal nodes.
+There seems to be some nonlinearities as the spread in the residuals don't form a clean parallel band
+of random errors.
+
+#e.
+I would choose the regression tree. Although both regression tree and neural networks have better $R^2$
+and SSE compared to the linear model, the regression tree has the better $R^2$ on the cross validation
+error. It is also more interpretable than a neural network. The only drawback is that its residuals 
+are less conformable to the assumption that errors are identically and independently distributed, although
+this is only applicable is the relationship is indeed linear.
+
+##Problem 4
+
+Please note that model comparisons were based on misclassification rate.
+
+#a. 
+Please refer to appendix for the neural network 10 fold cv. The grid of model paramters was size of 20,25,30
+and decay of 0.05, 0.1, 0.15. Optimal mix was found to be size 30 and decay 0.05.
+
+#b.
+Please refer to appendix for the classification tree 10 fold cv. The grid of model paramters was size of 10,15,20,25. Optimal size was 7.
+
+#c.
+Please refer to appendix for the multinomial logistic regression. Please note that the summary is comparing the log odds of other categories compared to Containers. A one unit increase in the predictors increases the log odss of head and table vs cont except for K, CA, and Ba.With other categories, a one unit increases decreases log odds compared to Container except for Fe.
+
+#d.
+After fitting, the misclassification rate is 3.7%, 22.9%, and 26.17% for the neural network, classification tree, and multinomial logistic regression respectively. The other models are more interpretable than
+the neural network as we can see a classification tree as a system of easy to interpret rules and logistic regression can be interpreted as log odds; however, the neural network far outpaces the other in terms of
+classifying categories correctly.
+
+##Appendix
+
+#Read in data
+
+#Problem 1
+```{r cars}
+# install.packages("xlsx")
+# install.packages('rJava')
+# options(java.home="C:\\Program Files\\Java\\jre7\\")
+# library(rJava)
+# library(xlsx)
+
+heart<-read.csv("HW2data.csv")
+
+# cost to log10 cost response
+heart$cost<-log10(heart$cost)
+
+# standardized predictor dataset and unstandardized predictor dataset
+# he even standardized categorical predictors as well
+
+standheart<-heart
+standheart[ , c(2:9)]<-scale(standheart[ ,c(2:9)], center=T, scale=T)
+unstandheart<-heart
+```
+
+#a and b.
+```{r}
+regfit<-lm(cost~., standheart)
+summary(regfit)
+n<-nrow(standheart)
+
+#install.packages("HH")
+library(HH)
+vif(regfit)
+
+# check vif for multicollinearity and then check
+# coefficients for most important
+
+# the number of interventions/procedures carried out and number of days of treatment condition
+# seemed to have the biggest effect on cost
+```
+
+#c.
+```{r}
+library(reshape2)
+library(ggplot2)
+ggplot(data = melt(standheart), mapping = aes(x = value)) + 
+        geom_histogram(bins = 10) + facet_wrap(~variable, scales = 'free_x')
+
+# drugs, number of comorbidites, and number of days of treatment are heavily right skewed
+plot(regfit, which=1)
+plot(regfit, which=2)
+head(standheart)
+```
+
+#Problem 2
+
+#a and b.
+```{r}
+library(nnet)
+
+# linout=T for continous values
+CVInd <- function(n,K) {  #n is sample size; K is number of parts; returns K-length list of indices for each part
+        m<-floor(n/K)  #approximate size of each part
+        r<-n-m*K
+        I<-sample(n,n)  #random reordering of the indices
+        Ind<-list()  #will be list of indices for all K parts
+        length(Ind)<-K
+        for (k in 1:K) {
+                if (k <= r) kpart <- ((m+1)*(k-1)+1):((m+1)*k)
+                else kpart<-((m+1)*r+m*(k-r-1)+1):((m+1)*r+m*(k-r))
+                Ind[[k]] <- I[kpart]  #indices for kth part of data
+        }
+        Ind
+}
+
+Nrep<-3 #number of replicates of CV
+K<-10  #K-fold CV on each replicate
+n.models = 9 #number of different models to fit
+n=nrow(standheart)
+y<-standheart$cost
+yhat=matrix(0,n,n.models)
+MSE<-matrix(0,Nrep,n.models)
+
+for (j in 1:Nrep) {
+        Ind<-CVInd(n,K)
+        for (k in 1:K) {
+                out<-nnet(cost~.,standheart[-Ind[[k]],], linout=T, skip=F, size=5, 
+                          decay=0.5, maxit=1000, trace=F)
+                yhat[Ind[[k]],1]<-as.numeric(predict(out,standheart[Ind[[k]],]))
+                out<-nnet(cost~.,standheart[-Ind[[k]],], linout=T, skip=F, size=5, 
+                          decay=1, maxit=1000, trace=F)
+                yhat[Ind[[k]],2]<-as.numeric(predict(out,standheart[Ind[[k]],]))
+                out<-nnet(cost~.,standheart[-Ind[[k]],], linout=T, skip=F, size=5, 
+                          decay=2, maxit=1000, trace=F)
+                yhat[Ind[[k]],3]<-as.numeric(predict(out,standheart[Ind[[k]],]))
+                out<-nnet(cost~.,standheart[-Ind[[k]],], linout=T, skip=F, size=10, 
+                          decay=0.5, maxit=1000, trace=F)
+                yhat[Ind[[k]],4]<-as.numeric(predict(out,standheart[Ind[[k]],]))
+                out<-nnet(cost~.,standheart[-Ind[[k]],], linout=T, skip=F, size=10, 
+                          decay=1, maxit=1000, trace=F)
+                yhat[Ind[[k]],5]<-as.numeric(predict(out,standheart[Ind[[k]],]))
+                out<-nnet(cost~.,standheart[-Ind[[k]],], linout=T, skip=F, size=10, 
+                          decay=2, maxit=1000, trace=F)
+                yhat[Ind[[k]],6]<-as.numeric(predict(out,standheart[Ind[[k]],]))
+                out<-nnet(cost~.,standheart[-Ind[[k]],], linout=T, skip=F, size=20, 
+                          decay=0.5, maxit=1000, trace=F)
+                yhat[Ind[[k]],7]<-as.numeric(predict(out,standheart[Ind[[k]],]))
+                out<-nnet(cost~.,standheart[-Ind[[k]],], linout=T, skip=F, size=20, 
+                          decay=1, maxit=1000, trace=F)
+                yhat[Ind[[k]],8]<-as.numeric(predict(out,standheart[Ind[[k]],]))
+                out<-nnet(cost~.,standheart[-Ind[[k]],], linout=T, skip=F, size=20, 
+                          decay=2, maxit=1000, trace=F)
+                yhat[Ind[[k]],9]<-as.numeric(predict(out,standheart[Ind[[k]],]))
+        } #end of k loop
+        MSE[j,]=apply(yhat,2,function(x) sum((y-x)^2))/n
+} #end of j loop
+MSE
+MSEAve<- apply(MSE,2,mean); MSEAve #averaged mean square CV error
+MSEsd <- apply(MSE,2,sd); MSEsd   #SD of mean square CV error
+r2<-1-MSEAve/var(y); r2  #CV r^2
+# lowest MSE around 0.22 with 68% R^2
+# best model parameters are size=10 and decay=1
+nn.fit<-nnet(cost~.,standheart, linout=T, skip=F, size=10, decay=1, maxit=1000, trace=F)
+```
+
+#c.
+```{r}
+# install.packages("yaImpute")
+# install.packages("ALEPlot")
+# path <- './ALEPlot_1.0.tar.gz'
+# install.packages(path, repos = NULL, type="source")
+library(ALEPlot)
+yhat <- function(X.model, newdata) as.numeric(predict(X.model, newdata))
+
+# main effects 
+par(mfrow=c(2,4))
+for (j in 1:8)  {ALEPlot(standheart[,2:9], nn.fit, pred.fun=yhat, J=j, K=50, NA.plot = TRUE)
+        rug(heart[,j]) }  ## This creates main effect ALE plots for all 7 predictors
+
+# interaction effects
+par(mfrow=c(2,2))
+a<-ALEPlot(standheart[,2:9], nn.fit, pred.fun=yhat, J=c(3,4), K=50, NA.plot = TRUE)
+b<-ALEPlot(standheart[,2:9], nn.fit, pred.fun=yhat, J=c(3,5), K=50, NA.plot = TRUE)
+c<-ALEPlot(standheart[,2:9], nn.fit, pred.fun=yhat, J=c(3,6), K=50, NA.plot = TRUE)
+d<-ALEPlot(standheart[,2:9], nn.fit, pred.fun=yhat, J=c(3,7), K=50, NA.plot = TRUE)
+
+```
+
+#d.
+```{r}
+par(mfrow=c(1,1))
+resid<-standheart$cost-predict(nn.fit, standheart)
+df<-data.frame(cbind(resid,predict(nn.fit, standheart)))
+colnames(df)<-c("Residual", "Fitted")
+df <- df[order(df$Residual),]
+plot(df$Fitted, df$Residual)
+abline(h=0)
+# the variance seems to be random
+```
+
+#Problem 3
+
+#a.,b.,c.
+```{r}
+library(rpart)
+control <- rpart.control(minbucket = 5, cp = 0.00001, maxsurrogate = 0, usesurrogate = 0, xval = 10) 
+# minbucket minimum number of obsv, cp is complexity parameter
+orgtree <- rpart(cost ~ .,standheart, method = "anova", control = control)
+plotcp(orgtree)  #plot of CV r^2 vs. size
+orgtree$cptable
+bestcp<-orgtree$cptable[which.min(orgtree$cptable[,"xerror"]),"CP"]
+bestcp
+
+bestxerror<-orgtree$cptable[which.min(orgtree$cptable[,"xerror"]),"xerror"]
+bestxerror
+
+cvr2<-1-bestxerror #CV r^2which(platform2$Date==strptime("Jan 30, 2014 00:00:00", "%b %d, %Y %H:%M:%S", tz="GMT")
+cvr2
+# cv r2 of 64%
+
+#prune back to optimal size, according to plot of CV 1-r^2
+orgtree2 <- prune(orgtree, cp=bestcp)  #approximately the best is with complexity parameter of 0.00409089
+
+# variable importance
+orgtree2$variable.importance
+
+# rules and plot of pruned tree
+orgtree2
+par(cex=.9); plot(orgtree2, uniform=F); text(orgtree2, use.n = T); par(cex=1)
+```
+
+#d.
+```{r}
+par(mfrow=c(1,1))
+resid<-standheart$cost-predict(orgtree2, standheart)
+df<-data.frame(cbind(resid,predict(orgtree2, standheart)))
+colnames(df)<-c("Residual", "Fitted")
+df <- df[order(df$Residual),]
+plot(df$Fitted, df$Residual)
+abline(h=0)
+# errors seems centered around 0
+```
+
+# Problem 4
+
+#a.
+```{r}
+glass<-read.csv("HW2datb.csv")
+# dataset of standardized predictors and unstandardized predictors
+# unstandglass<-glass
+# standglass<-glass
+# standglass[ , c(1:9)]<-scale(standglass[ , c(1:9)], center=T, scale=T)
+
+# using misclassification rate to decide between models, 
+# use class in predict function 
+Nrep<-10 #number of replicates of CV
+K<-10  #K-fold CV on each replicate
+n.models = 9 #number of different models to fit
+n=nrow(glass)
+y<-glass$type
+yhat=matrix('',n,n.models)
+MSC<-matrix(0,Nrep,n.models)
+
+for (j in 1:Nrep) {
+        Ind<-CVInd(n,K)
+        for (k in 1:K) {
+                out<-nnet(type~.,glass[-Ind[[k]],], linout=F, skip=F, size=5, decay=0.05, maxit=1000, trace=F)
+                yhat[Ind[[k]],1]<-as.character(predict(out,glass[Ind[[k]],], type="class"))
+                out<-nnet(type~.,glass[-Ind[[k]],], linout=F, skip=F, size=5, decay=0.1, maxit=1000, trace=F)
+                yhat[Ind[[k]],2]<-as.character(predict(out,glass[Ind[[k]],], type="class"))
+                out<-nnet(type~.,glass[-Ind[[k]],], linout=F, skip=F, size=5, decay=0.15, maxit=1000, trace=F)
+                yhat[Ind[[k]],3]<-as.character(predict(out,glass[Ind[[k]],], type="class"))
+                out<-nnet(type~.,glass[-Ind[[k]],], linout=F, skip=F, size=10, decay=0.05, maxit=1000, trace=F)
+                yhat[Ind[[k]],4]<-as.character(predict(out,glass[Ind[[k]],], type="class"))
+                out<-nnet(type~.,glass[-Ind[[k]],], linout=F, skip=F, size=10, decay=0.1, maxit=1000, trace=F)
+                yhat[Ind[[k]],5]<-as.character(predict(out,glass[Ind[[k]],], type="class"))
+                out<-nnet(type~.,glass[-Ind[[k]],], linout=F, skip=F, size=10, decay=0.15, maxit=1000, trace=F)
+                yhat[Ind[[k]],6]<-as.character(predict(out,glass[Ind[[k]],], type="class"))
+                out<-nnet(type~.,glass[-Ind[[k]],], linout=F, skip=F, size=20, decay=0.05, maxit=1000, trace=F)
+                yhat[Ind[[k]],7]<-as.character(predict(out,glass[Ind[[k]],], type="class"))
+                out<-nnet(type~.,glass[-Ind[[k]],], linout=F, skip=F, size=20, decay=0.1, maxit=1000, trace=F)
+                yhat[Ind[[k]],8]<-as.character(predict(out,glass[Ind[[k]],], type="class"))
+                out<-nnet(type~.,glass[-Ind[[k]],], linout=F, skip=F, size=20, decay=0.15, maxit=1000, trace=F)
+                yhat[Ind[[k]],9]<-as.character(predict(out,glass[Ind[[k]],], type="class"))
+        } #end of k loop
+        MSC[j,]=apply(yhat,2,function(x) sum(y!=x)/n)
+} #end of j loop
+MSCAve<- apply(MSC,2,mean); MSCAve #averaged mean misclassification rate lowest of 0.23
+MSCsd<-apply(MSC,2,sd);MSCsd1
+
+# best model parameters are size=30 and decay=0.05
+nn.fit2<-nnet(type~.,glass, linout=F, skip=F, size=20, decay=0.05, maxit=1000, trace=F)
+# sum of squared errors
+sum(glass$type!=predict(nn.fit2,glass, type="class"))/nrow(glass)
+# 3.27% misclassification rate
+```
+
+#b.
+```{r}
+control <- rpart.control(minbucket = 5, cp = 0.00001, maxsurrogate = 0, usesurrogate = 0, xval = 10) 
+# minbucket minimum number of obsv, cp is complexity parameter
+classtree <- rpart(type ~ .,glass, method = "class", control = control)
+plotcp(classtree)  #plot of CV r^2 vs. size
+
+# xerror is deviance here
+bestcp <- classtree$cptable[which.min(classtree$cptable[,"xerror"]),"CP"]
+bestcp
+
+# xerror is misclass rate relative to stump (first split) so multiple it by misclass rate in stump by 1-max(glass$type)/n
+bestxerror <- classtree$cptable[which.min(classtree$cptable[,"xerror"]),"xerror"]
+bestxerror
+# cv misclass rate is 0.2804 with optimal cp is 0.0144928
+bestxerror*(1-max(table(y))/nrow(glass))
+
+#prune back to optimal size, according to plot of CV 1-r^2
+classtree2 <- prune(classtree, cp=bestcp)  #approximately the best size pruned tree is with complexity
+# variable importance
+classtree2$variable.importance
+# plot and text of pruned tree according to levels
+classtree2
+par(cex=.9); plot(classtree2, uniform=F); text(classtree2, use.n = T); par(cex=1)
+
+# training misclass % is 0.228972
+sum(glass$type!=predict(classtree2,glass, type="class"))/nrow(glass)
+```
+
+#c.
+```{r}
+library(MASS)
+multi<-multinom(type~., glass, trace=F)
+summary(multi)
+
+# training 26.64% misclassified
+sum(glass$type!=predict(multi,glass, type="class"))/nrow(glass)
+```

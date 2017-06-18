@@ -1,0 +1,581 @@
+---
+title: "HW3"
+author: "Michael Cho"
+date: "February 25, 2017"
+output: word_document
+---
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(warning=FALSE, message=FALSE)
+```
+
+```{r}
+setwd("C:/Users/mcho/Desktop/pred_anal2/class3")
+```
+
+##Problem 1
+# a.
+For n fold cross validation, the best k is 8 with 0.33948 MSE and 50.47 $R^2$. For 10 fold cross
+validation, the best k is 7 with  with 0.3477054 mse AND 49.27 $R^2$. Some pros and cons
+is that n fold is not more computationally expensive than 10 fold cross validation, since we are not fitting a model. N fold cross validation produces unbiased estimates, but is more highly variable than k fold validation and is generally a worse estimate
+of test set error when trying to generalize to unseen data.
+#b.
+There is no prediction error, since we are using n fold cross validation and all other outside observations of the iteration fold are considered as candidates for nearest neighbors and there is no need to run replicates, since the same nearest neighbors would be used for individual observations all the time. 
+#c.
+Using 8 neighbors and looking through the whole heart data set, we find that row 
+indexes 517,307,622,478,313,778,273, and 80 are the closest neighbors and the  predicted average
+of their log10 cost is 3.1449.
+
+##Problem 2
+#a.
+It seems the intvn and ervis has the biggest effect based on plots in the appendix. Please note
+that variables where a smoother was not applied will not appear in the plot output.
+#b.
+The 10 fold cross validation standard deviation of prediction error is 0.0016.
+N fold cross validation is more computationally expensive than 10 fold cross validation and while it produces unbiased estimates of test set error, it is more highly variable while 10 fold cross validation is more balanced between variance and bias often producing lower test set error.
+There also seems to be an issue with applying a smoother to variables a low number of levels.
+For example, drugs and comp seems to have a low range of values and therefore a smoother
+cannot be applied in some scenarios where data values are sparse. This would be exacerbated in a 10 fold versus a n fold cross validation scenario as n fold just uses leave one out methodology.
+#c.
+The predicted cost from the model is 3.556478.
+
+##Problem 3
+#a.
+The 10 fold cross validation indicates that we get the lowest mean square cv error of 0.221
+and 67.6 $R^2$ with degree 1 and span 0.5.
+#b.
+The lowest cp is 0.2239008 with degree 1 and span 0.5 with agrees with the optimal parameters from the 10 fold cross validation.
+#c.
+The prediction error standard deviation of the best 10 fold cv error is 0.001.
+#d.
+The predicted cost from the model is 3.625035.
+
+##Problem 4
+#a.
+The 10 fold cross validation indicates the optimal number of terms is 2.
+#b.
+The prediction error standard deviation of the best 10 fold cv error is 0.002.
+Please refer to the appendix for the summary of the fitted model as well as plots of component function. Term1 has a coefficient of 0.7348 and term2 has a coefficient of 0.1591, so term 1
+seems to be more important. Comp (0.925) and intvn (0.29) weigh the most for term1 and
+gend(0.603) and comp(0.785) weigh the most for term2. 
+#c.
+The predicted cost from the model is 3.614803.
+
+##Problem 5
+#a.
+The best knn model according to 10 fold cv is with k=3 with 0.13 misclass rate.
+#b.
+For gam, I didn't apply a smoothing paramaeter to Ri, Ca, and Mg according to gam.check
+which does a check on the degrees of freedom used as indicated by k in the smoothing function. 10 fold cv indicates a 0.17 misclass rate.
+#c.
+The best neural network model according to 10 fold cv is of size 25 and decay 0.005 with a 
+misclass rate of 0.14. So it seems comparable to knn but better than gams.
+
+##Problem 6
+#a.
+Please check appendix for plot of cv vs test squared error loss. The best number of trees
+seem to be around 53.
+#b.
+Based on the summary with the best number of trees, we find that intvn has the most importance,
+followed by comorb, and dur.
+#c.
+The predicted cost is 3.392167.
+
+##Problem 7
+#a.
+The out of bag $R^2$ is 66.85 and doesn't seem to vary much between replicates.
+#b.
+Yes, the number of trees grown seem to be appropriate since the error seems to be lowest
+a lot lower than 500 trees.
+#c.
+The most important variables seem to be intvn, comorb, dur, and comp. This seems to generally
+agree with variable importance measures from other methods.
+#d.
+age - negative nonlinear
+gend - negative linear
+intvn - positive nonlinear
+drugs - nonlinear
+ervis - positive nonlinear
+comp - positive nonlinear
+comorb - positive nonlinear
+dur - positive nonlinear
+This agrees with the variable importance measures as we can see by the y axis the scale from lowest to highest variable values. Intvn effect on cost from from 2 to 4 while comorb ranges from 2.5 to 3.2. These partial dependence plots also agree with the partial dependence plots, but random forests seems to be a lot smoother, while the boosted tree dependence plots look more like piecewise functions. Gender is also not linear in boosted trees. The partial dependence plots is found in the appendix code for problem 6.
+#e.
+The predicted cost is 3.624023.
+#f.
+The model with mtry=2 seems to have the highest $R^2$ of 66.91. In an individual tree, mtry is the number of variables that is considered at each split. This will be different for each individual tree in the ensemble of trees.
+#g.
+Based on cross validated $R^2$ values, I would choose boosted trees at 68.78% $R^2$. 
+
+## Appendix
+# Problem 1
+```{r}
+heart<-read.csv("HW2data.csv")
+heart$cost<-log10(heart$cost)
+standheart<-heart
+standheart[ ,c(2:9)]<-scale(standheart[ ,c(2:9)], center=T, scale=T)
+```
+
+a.
+```{r}
+library(yaImpute)
+
+CVInd <- function(n,K) {  #n is sample size; K is number of parts; returns K-length list of indices for each part
+  m<-floor(n/K)  #approximate size of each part
+  r<-n-m*K  
+  I<-sample(n,n)  #random reordering of the indices
+  Ind<-list()  #will be list of indices for all K parts
+  length(Ind)<-K
+  for (k in 1:K) {
+    if (k <= r) kpart <- ((m+1)*(k-1)+1):((m+1)*k)  
+    else kpart<-((m+1)*r+m*(k-r-1)+1):((m+1)*r+m*(k-r))
+    Ind[[k]] <- I[kpart]  #indices for kth part of data
+  }
+  Ind
+}
+
+# n fold cv
+n=nrow(standheart)
+K<-n #K-fold CV on each replicate
+n.models = 4 #number of different models to fit
+y<-standheart$cost
+yhat=matrix(0,n,n.models) 
+MSE<-matrix(0,1,n.models)
+
+Ind<-CVInd(n,K)
+  for (k in 1:K) {
+     train<-as.matrix(standheart[-Ind[[k]],c(2:9)])
+     test<-as.matrix(standheart[Ind[[k]],c(2:9)])
+     ytrain<-standheart[-Ind[[k]],1]
+     K1=9; K2=8; K3=7; K4=6;
+     out<-ann(train,test,K1,verbose=F)
+     ind<-as.matrix(t(out$knnIndexDist[,1:K1]))
+     yhat[Ind[[k]],1]<-apply(ind,1,function(x) mean(ytrain[x]))
+     out<-ann(train,test,K2,verbose=F)
+     ind<-as.matrix(t(out$knnIndexDist[,1:K2]))
+     yhat[Ind[[k]],2]<-apply(ind,1,function(x) mean(ytrain[x]))
+     out<-ann(train,test,K3,verbose=F)
+     ind<-as.matrix(t(out$knnIndexDist[,1:K3]))
+     yhat[Ind[[k]],3]<-apply(ind,1,function(x) mean(ytrain[x]))
+     out<-ann(train,test,K4,verbose=F)
+     ind<-as.matrix(t(out$knnIndexDist[,1:K4]))
+     yhat[Ind[[k]],4]<-apply(ind,1,function(x) mean(ytrain[x]))
+  } #end of k loop
+MSE[1,]=apply(yhat,2,function(x) sum((y-x)^2))/n; MSE #mean square CV error
+r2<-1-MSE/var(y); r2  #CV r^2
+# k=8 is best here
+sqrt(MSE[1,])
+
+# predicted cost
+test<-c(59, 0, 10, 0, 3, 0, 4, 300)
+xbar<-apply(as.matrix(heart[,2:9]),2,mean)
+std<-apply(as.matrix(heart[,2:9]),2,sd)
+test<-(test-xbar)/std #must standardize
+test<-matrix(test, 1,8)
+finalknn<-ann(as.matrix(standheart[,c(2:9)]),test,8,verbose=F)
+finalknn$knnIndexDist
+mean(standheart[finalknn$knnIndexDist[,1:8], 1])
+
+# 10 fold cv
+# Nrep<-50 #number of replicates of CV
+# K<-10 #K-fold CV on each replicate
+# n=nrow(heart)
+# n.models = 4 #number of different models to fit
+# y<-heart$cost
+# yhat=matrix(0,n,n.models) 
+# MSE<-matrix(0,Nrep,n.models)
+# for (j in 1:Nrep) {
+#   Ind<-CVInd(n,K)
+#   for (k in 1:K) {
+#      train<-as.matrix(heart[-Ind[[k]],c(2:9)])
+#      test<-as.matrix(heart[Ind[[k]],c(2:9)])
+#      ytrain<-heart[-Ind[[k]],1]
+#      K1=9; K2=8; K3=7; K4=6;
+#      out<-ann(train,test,K1,verbose=F)
+#      ind<-as.matrix(out$knnIndexDist[,1:K1])
+#      yhat[Ind[[k]],1]<-apply(ind,1,function(x) mean(ytrain[x]))
+#      out<-ann(train,test,K2,verbose=F)
+#      ind<-as.matrix(out$knnIndexDist[,1:K2])
+#      yhat[Ind[[k]],2]<-apply(ind,1,function(x) mean(ytrain[x]))
+#      out<-ann(train,test,K3,verbose=F)
+#      ind<-as.matrix(out$knnIndexDist[,1:K3])
+#      yhat[Ind[[k]],3]<-apply(ind,1,function(x) mean(ytrain[x]))
+#      out<-ann(train,test,K4,verbose=F)
+#      ind<-as.matrix(out$knnIndexDist[,1:K4])
+#      yhat[Ind[[k]],4]<-apply(ind,1,function(x) mean(ytrain[x]))
+#   } #end of k loop
+#   MSE[j,]=apply(yhat,2,function(x) sum((y-x)^2))/n
+# } #end of j loop
+# MSEAve<- apply(MSE,2,mean); MSEAve #averaged mean square CV error
+# MSEsd <- apply(MSE,2,sd); MSEsd   #SD of mean square CV error
+# r2<-1-MSEAve/var(y); r2  #CV r^2
+# k=7 best here
+# prediction error standard deviation
+```
+
+# Problem 2
+```{r}
+library(mgcv)
+out<-gam(cost~s(age)+s(intvn) + gend + comp + drugs + s(ervis) + s(comorb) + s(dur), data=standheart,family=gaussian()) 
+summary(out)
+par(mfrow=c(2,3))
+plot(out)
+
+# predicted cost
+test2<-data.frame(test)
+names(test2)<-names(standheart[,2:9])
+
+predict(out, test2)
+
+# n fold cv
+n=nrow(standheart)
+K<-n #K-fold CV on each replicate
+n.models = 1 #number of different models to fit
+y<-standheart$cost
+yhat=matrix(0,n,n.models) 
+MSE<-matrix(0,1,n.models)
+
+Ind<-CVInd(n,K)
+  for (k in 1:K) {
+     out<-gam(cost~s(age)+s(intvn) + gend + comp + drugs
+              + s(ervis) + s(comorb) + s(dur),        
+              data=standheart[-Ind[[k]],],family=gaussian()) 
+     yhat[Ind[[k]],1]<-predict(out,standheart[Ind[[k]],])
+  } #end of k loop
+MSE[1,]=apply(yhat,2,function(x) sum((y-x)^2))/n; MSE #mean square CV error
+r2<-1-MSE/var(y); r2  #CV r^2
+# prediction error standard deviation
+sqrt(MSE[1,])
+
+# 10 fold cv
+# Nrep<-50 #number of replicates of CV
+# K<-10 #K-fold CV on each replicate
+# n=nrow(heart)
+# n.models = 1 #number of different models to fit
+# y<-heart$cost
+# yhat=matrix(0,n,n.models) 
+# MSE<-matrix(0,Nrep,n.models)
+# for (j in 1:Nrep) {
+#   Ind<-CVInd(n,K)
+#   for (k in 1:K) {
+#      out<-gam(cost~s(age)+s(intvn) + gend + comp + drugs
+#               + s(ervis) + s(comorb) + s(dur),        
+#               data=heart[-Ind[[k]],],family=gaussian()) 
+#      yhat[Ind[[k]],1]<-predict(out,heart[Ind[[k]],])
+#   } #end of k loop
+#   MSE[j,]=apply(yhat,2,function(x) sum((y-x)^2))/n
+# } #end of j loop
+# MSEAve<- apply(MSE,2,mean); MSEAve #averaged mean square CV error
+# MSEsd <- apply(MSE,2,sd); MSEsd   #SD of mean square CV error
+# r2<-1-MSEAve/var(y); r2  #CV r^2
+
+```
+
+#Problem 3
+```{r}
+# n fold cv
+Nrep<-50 #number of replicates of CV
+n=nrow(standheart)
+K<-10 #K-fold CV on each replicate
+n.models = 9#number of different models to fit
+y<-standheart$cost
+yhat=matrix(0,n,n.models) 
+MSE<-matrix(0,Nrep,n.models)
+
+for (j in 1:Nrep) {
+  Ind<-CVInd(n,K)
+  for (k in 1:K) {
+     out<- loess(cost~intvn + comorb + dur + ervis, data=standheart[-Ind[[k]],],
+                 control=loess.control(surface = "direct"), span=0.1, degree=0)  
+     yhat[Ind[[k]],1]<-predict(out,standheart[Ind[[k]],])
+     out<- loess(cost~intvn + comorb + dur + ervis, data=standheart[-Ind[[k]],], 
+                 control=loess.control(surface = "direct"), span=0.5, degree=0)  
+     yhat[Ind[[k]],2]<-predict(out,standheart[Ind[[k]],])
+     out<- loess(cost~intvn + comorb + dur + ervis, data=standheart[-Ind[[k]],], 
+                 control=loess.control(surface = "direct"), span=1, degree=0)  
+     yhat[Ind[[k]],3]<-predict(out,standheart[Ind[[k]],])
+     out<- loess(cost~intvn + comorb + dur + ervis, data=standheart[-Ind[[k]],], 
+                 control=loess.control(surface = "direct"), span=0.1, degree=1)  
+     yhat[Ind[[k]],4]<-predict(out,standheart[Ind[[k]],])
+     out<- loess(cost~intvn + comorb + dur + ervis, data=standheart[-Ind[[k]],], 
+                 control=loess.control(surface = "direct"), span=0.5, degree=1)  
+     yhat[Ind[[k]],5]<-predict(out,standheart[Ind[[k]],])
+     out<- loess(cost~intvn + comorb + dur + ervis, data=standheart[-Ind[[k]],], 
+                 control=loess.control(surface = "direct"), span=1, degree=1)  
+     yhat[Ind[[k]],6]<-predict(out,standheart[Ind[[k]],])
+     out<- loess(cost~intvn + comorb + dur + ervis, data=standheart[-Ind[[k]],], 
+                 control=loess.control(surface = "direct"),span=0.1, degree=2)  
+     yhat[Ind[[k]],7]<-predict(out,standheart[Ind[[k]],])
+     out<- loess(cost~intvn + comorb + dur + ervis, data=standheart[-Ind[[k]],], 
+                 control=loess.control(surface = "direct"), span=0.5, degree=2)  
+     yhat[Ind[[k]],8]<-predict(out,standheart[Ind[[k]],])
+     out<- loess(cost~intvn + comorb + dur + ervis, data=standheart[-Ind[[k]],], 
+                 control=loess.control(surface = "direct"),span=1, degree=2)  
+     yhat[Ind[[k]],9]<-predict(out,standheart[Ind[[k]],])
+  } #end of k loop
+  MSE[j,]=apply(yhat,2,function(x) sum((y-x)^2))/n
+} #end of j loop
+MSEAve<- apply(MSE,2,mean); MSEAve #averaged mean square CV error
+MSEsd <- apply(MSE,2,sd); MSEsd   #SD of mean square CV error
+r2<-1-MSEAve/var(y); r2  #CV r^2
+# prediction error standard deviation
+sqrt(MSEAve)
+# best is degree 1, with span 0.5
+
+# cp 
+for (lambda in seq(.02,.2,.02)) {out<-loess(cost~intvn + comorb + dur + ervis, standheart,degree=0, span=lambda); print(c(lambda,out$s))}
+sig_hat0<-0.4821727
+
+for (lambda in c(seq(.01,.05,.01), seq(.1,1,.2))) {out<-loess(cost~intvn + comorb + dur + ervis, standheart,degree=0, span=lambda); SSE<-sum((standheart$cost-out$fitted)^2); Cp <- (SSE+2*out$trace.hat*sig_hat0^2)/n; print(c(lambda,Cp))}
+# degree 0 with lambda 0.04, Cp=0.243106
+
+for (lambda in seq(.02,.2,.02)) {out<-loess(cost~intvn + comorb + dur + ervis, standheart,degree=1, span=lambda); print(c(lambda,out$s))}
+sig_hat1<-0.4671513
+
+for (lambda in c(seq(.01,.05,.01), seq(.1,1,.2))) {out<-loess(cost~intvn + comorb + dur + ervis, standheart,degree=1, span=lambda); SSE<-sum((standheart$cost-out$fitted)^2); Cp <- (SSE+2*out$trace.hat*sig_hat1^2)/n; print(c(lambda,Cp))}
+# degree 1 with lambda 0.5, Cp=0.2239008
+
+for (lambda in seq(.02,.2,.02)) {out<-loess(cost~intvn + comorb + dur + ervis, standheart,degree=2, span=lambda); print(c(lambda,out$s))}
+sig_hat2<-0.6129484
+
+for (lambda in c(seq(.01,.05,.01), seq(.1,2,.2))) {out<-loess(cost~intvn + comorb + dur + ervis, standheart,degree=2, span=lambda); SSE<-sum((standheart$cost-out$fitted)^2); Cp <- (SSE+2*out$trace.hat*sig_hat2^2)/n; print(c(lambda,Cp))}
+# degree 2 with lambda 1.1, Cp=0.2404817
+
+# predicted cost 
+out<-loess(cost~intvn + comorb + dur + ervis, standheart,degree=1, span=0.4)
+predict(out,test2)
+
+```
+
+#Problem 4
+```{r}
+library(stats)
+
+# n fold cv
+n=nrow(standheart)
+K<-n #K-fold CV on each replicate
+n.models = 3 #number of different models to fit
+y<-standheart$cost
+yhat=matrix(0,n,n.models) 
+MSE<-matrix(0,1,n.models)
+
+Ind<-CVInd(n,K)
+  for (k in 1:K) {
+     out<- ppr(cost~., data=standheart[-Ind[[k]],], nterms=3)  
+     yhat[Ind[[k]],1]<-predict(out,standheart[Ind[[k]],])
+     out<- ppr(cost~., data=standheart[-Ind[[k]],], nterms=2)  
+     yhat[Ind[[k]],2]<-predict(out,standheart[Ind[[k]],])
+     out<- ppr(cost~., data=standheart[-Ind[[k]],], nterms=1)  
+     yhat[Ind[[k]],3]<-predict(out,standheart[Ind[[k]],])
+  } #end of k loop
+MSE[1,]=apply(yhat,2,function(x) sum((y-x)^2))/n; MSE #mean square CV error
+r2<-1-MSE/var(y); r2  #CV r^2
+# optimal number of n terms is 2
+
+# 10 fold cv
+Nrep<-50 #number of replicates of CV
+K<-10 #K-fold CV on each replicate
+n=nrow(standheart)
+n.models = 3#number of different models to fit
+y<-standheart$cost
+yhat=matrix(0,n,n.models) 
+MSE<-matrix(0,Nrep,n.models)
+for (j in 1:Nrep) {
+  Ind<-CVInd(n,K)
+  for (k in 1:K) {
+     out<- ppr(cost~., data=standheart[-Ind[[k]],], nterms=3)  
+     yhat[Ind[[k]],1]<-predict(out,standheart[Ind[[k]],])
+     out<- ppr(cost~., data=standheart[-Ind[[k]],], nterms=2)  
+     yhat[Ind[[k]],2]<-predict(out,standheart[Ind[[k]],])
+     out<- ppr(cost~., data=standheart[-Ind[[k]],], nterms=1)  
+     yhat[Ind[[k]],3]<-predict(out,standheart[Ind[[k]],])
+  } #end of k loop
+  MSE[j,]=apply(yhat,2,function(x) sum((y-x)^2))/n
+} #end of j loop
+MSEAve<- apply(MSE,2,mean); MSEAve #averaged mean square CV error
+MSEsd <- apply(MSE,2,sd); MSEsd   #SD of mean square CV error
+r2<-1-MSEAve/var(y); r2  #CV r^2
+sqrt(MSEAve)
+
+# fitted model interpretation and predicted cost use nterms=1
+out<-ppr(cost~., data=standheart, nterms=1) 
+summary(out)
+par(mfrow=c(1,1)); plot(out)  
+predict(out,test2)
+```
+
+#Problem 5
+```{r}
+glass<-read.csv("HW2datb.csv")
+glass$type<-factor(ifelse(glass$type=="WinF"|glass$type=="WinNF","Win","Other"))
+head(glass)
+
+# 10 fold cv for knn
+Nrep<-3 #number of replicates of CV
+K<-10 #K-fold CV on each replicate
+n=nrow(glass)
+n.models = 4 #number of different models to fit
+y<-glass$type
+yhat=matrix(0,n,n.models) 
+MSC<-matrix(0,Nrep,n.models)
+for (j in 1:Nrep) {
+  Ind<-CVInd(n,K)
+  for (k in 1:K) {
+     train<-as.matrix(glass[-Ind[[k]],c(1:9)])
+     test<-as.matrix(glass[Ind[[k]],c(1:9)])
+     ytrain<-glass[-Ind[[k]],10]
+     K1=5; K2=4; K3=3; K4=2;
+     out<-ann(train,test,K1,verbose=F)
+     ind<-as.matrix(out$knnIndexDist[,1:K1])
+     phat<-apply(ind,1,function(x) sum(ytrain[x]=="Win")/length(ytrain[x]))
+     yhat[Ind[[k]],1]<-ifelse(phat>0.5, "Win","Other")
+     out<-ann(train,test,K2,verbose=F)
+     ind<-as.matrix(out$knnIndexDist[,1:K2])
+     phat<-apply(ind,1,function(x) sum(ytrain[x]=="Win")/length(ytrain[x]))
+     yhat[Ind[[k]],2]<-ifelse(phat>0.5, "Win","Other")
+     out<-ann(train,test,K3,verbose=F)
+     ind<-as.matrix(out$knnIndexDist[,1:K3])
+     phat<-apply(ind,1,function(x) sum(ytrain[x]=="Win")/length(ytrain[x]))
+     yhat[Ind[[k]],3]<-ifelse(phat>0.5, "Win","Other")
+     out<-ann(train,test,K4,verbose=F)
+     ind<-as.matrix(out$knnIndexDist[,1:K4])
+     phat<-apply(ind,1,function(x) sum(ytrain[x]=="Win")/length(ytrain[x]))
+     yhat[Ind[[k]],4]<-ifelse(phat>0.5, "Win","Other")
+  } #end of k loop
+  MSC[j,]=apply(yhat,2,function(x) sum(x!=y)/n)
+} #end of j loop
+MSCAve<- apply(MSC,2,mean); MSCAve #averaged mean square CV misclass rate
+MSCsd <- apply(MSC,2,sd); MSCsd   #SD of mean square CV misclass rate
+# k =3 best here
+
+# 10 fold cv for gam
+# used gam.check(out) to not apply smoothing to variables where close to k
+Nrep<-3 #number of replicates of CV
+K<-10 #K-fold CV on each replicate
+n=nrow(glass)
+n.models = 1 #number of different models to fit
+y<-glass$type
+yhat=matrix(0,n,n.models) 
+MSC<-matrix(0,Nrep,n.models)
+for (j in 1:Nrep) {
+  Ind<-CVInd(n,K)
+  for (k in 1:K) {
+     out<-gam(type~RI+s(Na)+Mg+s(Al)+s(Si)+s(K)+Ca+s(Ba)+s(Fe),
+              data=glass[-Ind[[k]],], family=binomial())
+     #print(gam.check(out))
+     phat<-predict(out,glass[Ind[[k]],], type="response")
+     yhat[Ind[[k]],1]<-ifelse(phat>0.5, "Win","Other")
+  } #end of k loop
+  MSC[j,]=apply(yhat,2,function(x) sum(x!=y)/n)
+} #end of j loop
+MSCAve<- apply(MSC,2,mean); MSCAve #averaged mean square CV misclass rate
+MSCsd <- apply(MSC,2,sd); MSCsd   #SD of mean square CV miscalss rate
+
+# 10 fold cv for nnet
+standglass<-glass
+standglass[ , c(1:9)]<-scale(standglass[ , c(1:9)], center=T, scale=T)
+library(nnet)
+Nrep<-3 #number of replicates of CV
+K<-10 #K-fold CV on each replicate
+n=nrow(standglass)
+n.models = 9 #number of different models to fit
+y<-standglass$type
+yhat=matrix(0,n,n.models) 
+MSC<-matrix(0,Nrep,n.models)
+for (j in 1:Nrep) {
+        Ind<-CVInd(n,K)
+        for (k in 1:K) {
+                out<-nnet(type~.,standglass[-Ind[[k]],], linout=F, skip=F, 
+                          size=5, decay=0.1, maxit=1000, trace=F)
+                yhat[Ind[[k]],1]<-as.character(predict(out,standglass[Ind[[k]],], type="class"))
+                out<-nnet(type~.,standglass[-Ind[[k]],], linout=F, skip=F, 
+                          size=5, decay=1, maxit=100, trace=F)
+                yhat[Ind[[k]],2]<-as.character(predict(out,standglass[Ind[[k]],], type="class"))
+                out<-nnet(type~.,standglass[-Ind[[k]],], linout=F, skip=F, 
+                          size=5, decay=2, maxit=100, trace=F)
+                yhat[Ind[[k]],3]<-as.character(predict(out,standglass[Ind[[k]],], type="class"))
+                out<-nnet(type~.,standglass[-Ind[[k]],], linout=F, skip=F, 
+                          size=10, decay=0.1, maxit=100, trace=F)
+                yhat[Ind[[k]],4]<-as.character(predict(out,standglass[Ind[[k]],], type="class"))
+                out<-nnet(type~.,standglass[-Ind[[k]],], linout=F, skip=F, 
+                          size=10, decay=1, maxit=100, trace=F)
+                yhat[Ind[[k]],5]<-as.character(predict(out,standglass[Ind[[k]],], type="class"))
+                out<-nnet(type~.,standglass[-Ind[[k]],], linout=F, skip=F, 
+                          size=10, decay=2, maxit=100, trace=F)
+                yhat[Ind[[k]],6]<-as.character(predict(out,standglass[Ind[[k]],], type="class"))
+                out<-nnet(type~.,standglass[-Ind[[k]],], linout=F, skip=F, 
+                          size=20, decay=0.1, maxit=100, trace=F)
+                yhat[Ind[[k]],7]<-as.character(predict(out,standglass[Ind[[k]],], type="class"))
+                out<-nnet(type~.,standglass[-Ind[[k]],], linout=F, skip=F, 
+                          size=20, decay=1, maxit=100, trace=F)
+                yhat[Ind[[k]],8]<-as.character(predict(out,standglass[Ind[[k]],], type="class"))
+                out<-nnet(type~.,standglass[-Ind[[k]],], linout=F, skip=F, 
+                          size=20, decay=2, maxit=100, trace=F)
+                yhat[Ind[[k]],9]<-as.character(predict(out,standglass[Ind[[k]],], type="class"))
+        } #end of k loop
+        MSC[j,]=apply(yhat,2,function(x) sum(y!=x)/n)
+} #end of j loop
+MSCAve<- apply(MSC,2,mean); MSCAve #averaged mean misclassification rate 
+MSCsd<-apply(MSC,2,sd);MSCsd
+```
+
+#Problem 6
+```{r}
+#install.packages("gbm")
+set.seed(135)
+library(gbm)
+gbm1 <- gbm(cost~., data=standheart, var.monotone=rep(0,8), distribution="gaussian", n.trees=1000, shrinkage=0.2, interaction.depth=3, bag.fraction = .5, train.fraction = 1, n.minobsinnode = 10, cv.folds = 10, keep.data=TRUE, verbose=FALSE)
+best.iter <- gbm.perf(gbm1,method="cv");best.iter
+sqrt(gbm1$cv.error[best.iter]) #CV error SD
+1-gbm1$cv.error[best.iter]/var(heart$cost)  #CV r^2
+summary(gbm1,n.trees=best.iter)  # based on the optimal number of trees
+
+# partial dependence plots
+par(mfrow=c(2,4))
+plot(gbm1, i.var = 1, n.trees = best.iter)
+plot(gbm1, i.var = 2, n.trees = best.iter)
+plot(gbm1, i.var = 3, n.trees = best.iter)
+plot(gbm1, i.var = 4, n.trees = best.iter)
+plot(gbm1, i.var = 5, n.trees = best.iter)
+plot(gbm1, i.var = 6, n.trees = best.iter)
+plot(gbm1, i.var = 7, n.trees = best.iter)
+plot(gbm1, i.var = 8, n.trees = best.iter)
+
+# prediction
+predict(gbm1,test2, n.trees = best.iter)
+```
+
+#Problem 7
+```{r}
+#install.packages("randomForest")
+set.seed(1234)
+library(randomForest)
+rForest1 <- randomForest(cost~., data=standheart, mtry=3, ntree = 500, importance = TRUE)
+par(mfrow=c(1,1))
+plot(rForest1)  #plots OOB mse vs # trees
+rForest1 #check the OOB mse and r^2
+importance(rForest1); varImpPlot(rForest1)
+par(mfrow=c(2,4))
+for (i in c(2:9)) partialPlot(rForest1, pred.data=standheart, x.var = names(standheart)[i], xlab = names(standheart)[i], main=NULL) #creates "partial dependence" plots 
+
+# prediction 
+predict(rForest1, test2)
+
+# mtry 1 and 2
+set.seed(1234)
+rForest2 <- randomForest(cost~., data=standheart, mtry=1, ntree = 500, importance = TRUE)
+par(mfrow=c(1,1))
+plot(rForest2)  #plots OOB mse vs # trees
+rForest2 #check the OOB mse and r^2
+
+set.seed(1234)
+rForest3 <- randomForest(cost~., data=standheart, mtry=2, ntree = 500, importance = TRUE)
+par(mfrow=c(1,1))
+plot(rForest3)  #plots OOB mse vs # trees
+rForest3 #check the OOB mse and r^2
+```
+
+
+
+
+

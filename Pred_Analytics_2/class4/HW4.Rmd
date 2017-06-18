@@ -1,0 +1,133 @@
+---
+title: "HW4"
+author: "Michael Cho"
+date: "March 8, 2017"
+output: word_document
+---
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(warning=FALSE, message=FALSE)
+```
+
+```{r}
+setwd("C:/Users/mcho/Desktop/pred_anal2/class4")
+```
+
+#Problem 1
+a.
+To smooth out seasonality, we use a centered moving average. With a moving average, we just consider points in the past, but with a centered moving average we consider half of the points in the past and half of the points after a certain time period t. Please refer to the appendix for the plot. As we can see, the centered moving average measures just the trend line. 
+
+b.
+Please refer to the appendix for the plot. Please note that the k step ahead parameter is 24 here
+to represent two years in terms of months for this problem and the rest of problem 1 components. 
+
+The optimal $\alpha$ is 0.9999339. With just EWMA,we are just consider the cyclical portion of a time series with no trend and seasonality. Also since $\alpha$ is so close to 1, we are almost not weighting past observations at all. So therefore the k step ahead forecast is relatively flat here almost like a regular moving average where we are only considering the current observation
+over the k window.
+
+c.
+Please refer to the appendix for the plot. The optimal $\alpha$ is 1 and the optimal $\beta$
+is 0.003218516. With the Holt method, we are using a double ewma where we include cyclical and trend components. Once again, the high $\alpha$ indicates that we for the cyclical portion, we are not considering past observations at all, but the $\beta$ value although quite small includes
+a trend portion where we include an EWMA for the changes in the level from one observation to the next. As the trend has been increasing over the past k window before 1961, we can see that
+the trend plus cyclical portion is increasing as well.
+
+d.
+Please refer to the appendix for the plot. The optimal $\alpha$ is 0.2479595, the optimal $\beta$
+is 0.03453373, and the optimal $\gamma$ is 1. The seasonality coefficients seems to indicate
+that airline passengers increase April to September with the highest increase in July and August
+of each year.
+
+e.
+Please refer to the appendix for the plot. The optimal $\alpha$ is 0.2755925, the optimal $\beta$
+is 0.03269295, and the optimal $\gamma$ is 0.8707282.The seasonal coefficients seem to
+tell the same story here but there are no negative seasonal coefficients. The major difference
+between the additive and multiplicative models is that the additive model subtracts the seasonality from the current observation while the multiplicative model divides the seasonality from the current observation.
+
+f.
+In each previous problems, the msd has been calculated which is the squared errors between
+the actual y and the one step ahead forecast divided by the number of forecasts. The multiplicative holt winters model has the lowest msd at 125.5362.
+
+#Problem 2
+a.
+Please refer to the appendix for the fitted vs additive plot as well as the time series decomposition. We can see that the overall trend is increasing over time and the seasonal 
+pattern over a 1 year period peeks a little after mid year.Most of the variability seems to be
+coming from the seasonality.
+
+b.
+Please refer to the appendix for the fitted vs multiplicative plot as well as the time series decomposition. Once again, we see the same pattern as the additive plot as the overall trend is increasing over time and the seasonal pattern over a 1 year period peeks a little after mid year.However, in the additive model, the amplitude of seasonality is constant while in the multiplicative model, the amplitude of seasonality is proportional to the trend. Visually, from
+the plots we see that the fitted portion is a bit high in the earlier years and the fitted portion is a bit low in the later years when compared to the actual observations. Meanwhile,
+the multiplicative model seems to capture the increasing seasonality very well. For this reason, we should use the multiplicative model.
+
+##Appendix
+#Problem 1
+a.
+```{r}
+airline<-read.csv("airlne.csv",header=F)
+y<-ts(airline[[1]], start=1949,deltat=1/12)
+m=12;n=length(y)  
+CMAair<-filter(y, filter=rep(1/m,m), method = "convolution", sides = 2)
+plot(y,type="b")
+axis(side=1,at=seq(1949,1961,1))
+lines(CMAair,col="red")
+```
+
+b.
+```{r}
+k=24
+EWMAair<-HoltWinters(y, seasonal = "additive", beta = FALSE, gamma = FALSE) 
+EWMAairPred<-predict(EWMAair, n.ahead=k, prediction.interval = T, level = 0.95)
+plot(EWMAair,EWMAairPred,type="b",axis(side=1,at=seq(1949,1963,1)),ylim=c(0, 1000))
+EWMAair
+#msd
+sum((y-fitted(EWMAair)[,1])^2)/length(fitted(EWMAair)[,1])
+```
+
+c.
+```{r}
+Holtair<-HoltWinters(y, seasonal = "additive", gamma = FALSE) 
+HoltairPred<-predict(Holtair, n.ahead=k, prediction.interval = T, level = 0.95)
+plot(Holtair,HoltairPred,type="b",axis(side=1,at=seq(1949,1963,1)),ylim=c(0, 1000))
+Holtair
+#msd
+sum((y-fitted(Holtair)[,1])^2)/length(fitted(Holtair)[,1])
+```
+
+d.
+```{r}
+HWairad<-HoltWinters(y, seasonal = "additive") 
+HWairadPred<-predict(HWairad, n.ahead=k, prediction.interval = T, level = 0.95)
+plot(HWairad,HWairadPred,type="b",axis(side=1,at=seq(1949,1963,1)),ylim=c(0, 1000))
+HWairad
+#msd
+sum((y-fitted(HWairad)[,1])^2)/length(fitted(HWairad)[,1])
+```
+
+e.
+```{r}
+HWairmp<-HoltWinters(y, seasonal = "multiplicative") 
+HWairmpPred<-predict(HWairmp, n.ahead=k, prediction.interval = T, level = 0.95)
+plot(HWairmp,HWairmpPred,type="b",axis(side=1,at=seq(1949,1963,1)),ylim=c(0, 1000))
+HWairmp
+#msd
+sum((y-fitted(HWairmp)[,1])^2)/length(fitted(HWairmp)[,1])
+```
+
+#Problem 2
+a.
+```{r}
+decayairad<-decompose(y, type = "additive") 
+plot(decayairad,type="b")
+y_hat1<-decayairad$trend+decayairad$seasonal
+plot(y,type="b")
+lines(y_hat1,col="red")
+```
+
+b.
+```{r}
+decayairmp<-decompose(y, type = "multiplicative") 
+plot(decayairmp,type="b")
+y_hat2<-decayairmp$trend*decayairmp$seasonal
+plot(y,type="b")
+lines(y_hat2,col="red")
+```
+
+
